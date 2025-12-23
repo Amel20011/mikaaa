@@ -1,108 +1,164 @@
-import config from "../config.js";
-import * as owner from "../command/owner.js";
-import * as user from "../command/user.js";
-import * as group from "../command/group.js";
-import * as download from "../command/download.js";
+import { config } from '../config.js';
+import { menuHandler } from './menu.js';
 
-// Central command router (rowId or typed text)
-export async function handleCommand(sock, jid, msg, text, ctx) {
-  const prefix = config.prefix;
-  const cmd = text.toLowerCase().split(" ")[0]; // command token
-
-  // Examples of simple built-in commands
-  if (cmd === `${prefix}ping`) {
-    await sock.sendMessage(jid, { text: `Pong! ${config.emoji.sparkles}` });
-    return true;
-  }
-
-  // Owner commands
-  if (
-    [`${prefix}setname`, `${prefix}setbio`, `${prefix}restart`].includes(cmd)
-  ) {
-    await owner.run(sock, jid, msg, cmd, text);
-    return true;
-  }
-
-  // User commands
-  if ([`${prefix}profile`, `${prefix}balance`, `${prefix}daily`].includes(cmd)) {
-    await user.run(sock, jid, msg, cmd, text);
-    return true;
-  }
-
-  // Group commands
-  if ([`${prefix}announce`, `${prefix}mute`, `${prefix}welcome`].includes(cmd)) {
-    await group.run(sock, jid, msg, cmd, text, ctx);
-    return true;
-  }
-
-  // Download commands
-  if ([`${prefix}ytmp4`, `${prefix}ytmp3`, `${prefix}imgdl`].includes(cmd)) {
-    await download.run(sock, jid, msg, cmd, text);
-    return true;
-  }
-
-  // Misc from menus
-  if (
-    [
-      `${prefix}premium`,
-      `${prefix}upgrade`,
-      `${prefix}donasi_bank`,
-      `${prefix}donasi_ewallet`,
-      `${prefix}script_info`,
-      `${prefix}script_structure`,
-      `${prefix}dice`,
-      `${prefix}reverse`,
-      `${prefix}shortlink`,
-      `${prefix}sticker`
-    ].includes(cmd)
-  ) {
-    // Provide simple demo responses
-    switch (cmd) {
-      case `${prefix}premium`:
-        await sock.sendMessage(jid, { text: "Status: Non-premium 💗" });
+// Fungsi utama untuk handle command
+export async function commandHandler(sock, msg) {
+  try {
+    const from = msg.key.remoteJid;
+    const message = msg.message;
+    const msgType = Object.keys(message)[0];
+    let body = '';
+    
+    // Extract text dari pesan
+    if (msgType === 'conversation') {
+      body = message.conversation;
+    } else if (msgType === 'extendedTextMessage') {
+      body = message.extendedTextMessage.text;
+    } else if (msgType === 'imageMessage') {
+      body = message.imageMessage.caption || '';
+    }
+    
+    // Cek apakah pesan mengandung command
+    if (!body.startsWith(config.prefix)) return;
+    
+    // Parse command
+    const args = body.slice(config.prefix.length).trim().split(/ +/);
+    const command = args.shift().toLowerCase();
+    const text = args.join(' ');
+    
+    // Log command
+    const sender = msg.key.participant || from;
+    console.log(`📩 Command dari ${sender}: ${command}`);
+    
+    // Handle command berdasarkan kategori
+    switch (command) {
+      // Menu commands
+      case 'menu':
+      case 'help':
+        await menuHandler.mainMenu(sock, from);
         break;
-      case `${prefix}upgrade`:
-        await sock.sendMessage(jid, { text: "Hubungi Owner untuk upgrade 💎" });
+        
+      case 'ownermenu':
+        await menuHandler.ownerMenu(sock, from);
         break;
-      case `${prefix}donasi_bank`:
-        await sock.sendMessage(jid, { text: "Donasi via Bank BCA: 1234567890 a.n Owner" });
+        
+      case 'downloadmenu':
+        await menuHandler.downloadMenu(sock, from);
         break;
-      case `${prefix}donasi_ewallet`:
-        await sock.sendMessage(jid, { text: "Dana/OVO/Gopay: 081234567890" });
+        
+      case 'groupmenu':
+        await menuHandler.groupMenu(sock, from);
         break;
-      case `${prefix}script_info`:
-        await sock.sendMessage(jid, {
-          text:
-            "Script menggunakan baileys-pro, ESM, List Message kompatibel, login via QR, dan struktur modular 🌷"
+        
+      case 'usermenu':
+        await menuHandler.userMenu(sock, from);
+        break;
+        
+      // Simple response commands
+      case 'ping':
+        const start = Date.now();
+        await sock.sendMessage(from, { text: '🏓 Pong!' });
+        const latency = Date.now() - start;
+        await sock.sendMessage(from, { 
+          text: `⚡ Latency: ${latency}ms\n📡 Response Time: ${latency}ms` 
         });
         break;
-      case `${prefix}script_structure`:
-        await sock.sendMessage(jid, {
-          text:
-            "Struktur: index.js, config.js, handler/menu.js, handler/command.js, command/*, session/ ✨"
+        
+      case 'id':
+        await sock.sendMessage(from, { 
+          text: `📱 Your ID: ${from}\n👤 Sender: ${sender}` 
         });
         break;
-      case `${prefix}dice`:
-        await sock.sendMessage(jid, {
-          text: `🎲 Kamu dapat angka: ${Math.floor(Math.random() * 6) + 1}`
+        
+      case 'owner':
+        await sock.sendMessage(from, { 
+          text: `👑 Owner: ${config.owner}\n💬 Contact owner untuk bantuan lebih lanjut!` 
         });
         break;
-      case `${prefix}reverse`:
-        {
-          const q = text.slice(cmd.length).trim() || "contoh";
-          const rev = q.split("").reverse().join("");
-          await sock.sendMessage(jid, { text: `🔤 ${rev}` });
+        
+      case 'info':
+        await sock.sendMessage(from, { 
+          text: `🤖 *${config.botName}*\n\n` +
+                `📅 Dibuat dengan baileys-pro\n` +
+                `⚙️ Prefix: ${config.prefix}\n` +
+                `👑 Owner: ${config.owner}\n` +
+                `💕 ${config.footer}` 
+        });
+        break;
+        
+      // Group commands
+      case 'tagall':
+        if (!msg.key.remoteJid.endsWith('@g.us')) {
+          await sock.sendMessage(from, { 
+            text: '❌ Command ini hanya bisa digunakan di grup!' 
+          });
+          return;
+        }
+        
+        const groupMetadata = await sock.groupMetadata(from);
+        const participants = groupMetadata.participants;
+        let tagText = '🏷️ *Tag All Members* 🏷️\n\n';
+        
+        participants.forEach((participant, i) => {
+          tagText += `@${participant.id.split('@')[0]}\n`;
+        });
+        
+        await sock.sendMessage(from, { 
+          text: tagText,
+          mentions: participants.map(p => p.id)
+        });
+        break;
+        
+      // Download commands (placeholder)
+      case 'ytmp3':
+        await sock.sendMessage(from, { 
+          text: '🎵 *YouTube MP3 Download*\n\nSilahkan kirim link YouTube yang ingin didownload!' 
+        });
+        break;
+        
+      case 'ytmp4':
+        await sock.sendMessage(from, { 
+          text: '🎬 *YouTube MP4 Download*\n\nSilahkan kirim link YouTube yang ingin didownload!' 
+        });
+        break;
+        
+      // Sticker command
+      case 'sticker':
+      case 's':
+        if (msg.message.imageMessage) {
+          await sock.sendMessage(from, { 
+            text: '🔄 Mengconvert gambar ke sticker...' 
+          });
+          
+          // Download gambar
+          const buffer = await sock.downloadMediaMessage(msg);
+          
+          // Kirim sebagai sticker
+          await sock.sendMessage(from, {
+            sticker: buffer,
+            mimetype: 'image/webp'
+          });
+        } else {
+          await sock.sendMessage(from, { 
+            text: '❌ Silahkan kirim gambar dengan caption .sticker' 
+          });
         }
         break;
-      case `${prefix}shortlink`:
-        await sock.sendMessage(jid, { text: "Masukkan URL: .shortlink https://contoh.com" });
-        break;
-      case `${prefix}sticker`:
-        await sock.sendMessage(jid, { text: "Kirim gambar dengan caption .sticker ya 🌷" });
-        break;
+        
+      // Default response
+      default:
+        await sock.sendMessage(from, { 
+          text: `❓ Command "${command}" tidak dikenali.\n\nKetik ${config.prefix}menu untuk melihat daftar command.` 
+        });
     }
-    return true;
+    
+  } catch (error) {
+    console.error('Error handling command:', error);
+    
+    // Kirim error message ke pengguna
+    const from = msg.key.remoteJid;
+    await sock.sendMessage(from, { 
+      text: '❌ Terjadi error saat memproses command.\n\nSilahkan coba lagi nanti.' 
+    });
   }
-
-  return false;
 }
