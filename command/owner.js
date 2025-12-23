@@ -1,22 +1,79 @@
-import config from "../config.js";
+import { config } from '../config.js';
 
-// Demo owner commands — for real setname/setbio you'd need to update profile via WA APIs if available
-export async function run(sock, jid, msg, cmd, text) {
-  switch (cmd) {
-    case `${config.prefix}setname`:
-      {
-        const name = text.replace(`${config.prefix}setname`, "").trim() || "Aesthetic Bot";
-        await sock.sendMessage(jid, { text: `Nama bot di-set ke: ${name} ${config.emoji.sparkles}` });
-      }
+// Command khusus owner
+export async function handleOwnerCommand(sock, msg, command, args) {
+  const from = msg.key.remoteJid;
+  const sender = msg.key.participant || from;
+  
+  // Cek apakah pengirim adalah owner
+  const isOwner = sender.includes(config.owner.replace('+', ''));
+  
+  if (!isOwner) {
+    await sock.sendMessage(from, { 
+      text: '⛔ Maaf, command ini hanya untuk owner bot!' 
+    });
+    return;
+  }
+  
+  switch (command) {
+    case 'stats':
+      const chats = sock.chats.all();
+      const contacts = sock.contacts.all();
+      
+      await sock.sendMessage(from, {
+        text: `📊 *BOT STATISTICS*\n\n` +
+              `💬 Total Chats: ${chats.length}\n` +
+              `👥 Total Contacts: ${contacts.length}\n` +
+              `🕒 Uptime: ${process.uptime().toFixed(2)} detik\n` +
+              `📈 Memory Usage: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB`
+      });
       break;
-    case `${config.prefix}setbio`:
-      {
-        const bio = text.replace(`${config.prefix}setbio`, "").trim() || "Made with 💗";
-        await sock.sendMessage(jid, { text: `Bio di-set ke: ${bio} ${config.emoji.flower}` });
+      
+    case 'bc':
+      if (args.length < 1) {
+        await sock.sendMessage(from, { 
+          text: `❌ Penggunaan: ${config.prefix}bc <pesan>` 
+        });
+        return;
       }
+      
+      await sock.sendMessage(from, { 
+        text: '🚀 Memulai broadcast...' 
+      });
+      
+      // Broadcast ke semua chat
+      const chats = sock.chats.all();
+      let success = 0;
+      let failed = 0;
+      
+      for (const chat of chats) {
+        try {
+          await sock.sendMessage(chat.id, { 
+            text: `📢 *BROADCAST*\n\n${args.join(' ')}\n\n${config.footer}` 
+          });
+          success++;
+        } catch (error) {
+          failed++;
+        }
+      }
+      
+      await sock.sendMessage(from, {
+        text: `✅ Broadcast selesai!\n\n` +
+              `✅ Berhasil: ${success}\n` +
+              `❌ Gagal: ${failed}`
+      });
       break;
-    case `${config.prefix}restart`:
-      await sock.sendMessage(jid, { text: "Bot akan restart... 💗" });
+      
+    case 'restart':
+      await sock.sendMessage(from, { 
+        text: '🔄 Restarting bot...' 
+      });
       process.exit(0);
+      break;
+      
+    default:
+      await sock.sendMessage(from, { 
+        text: `❌ Command owner "${command}" tidak dikenali.` 
+      });
   }
 }
