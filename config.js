@@ -1,16 +1,23 @@
-// Simple config used across modules
-export default {
-  // Owner in international format without spaces
-  ownerNumber: "6281234567890",
-  ownerName: "Owner Bot",
-  botName: "💗 WHATSAPP BOT 💗",
-  footer: "made with 💗 by Owner",
-  prefix: ".", // command prefix for text commands & rowId triggers
-  // Aesthetic emojis
-  emoji: {
-    heart: "💗",
-    flower: "🌷",
-    sparkles: "✨",
-    hands: "🫶🏻"
-  }
+// Konfigurasi bot
+export const config = {
+  // Prefix command
+  prefix: '.',
+  
+  // Nomor owner bot
+  owner: '628xxxxxx',
+  
+  // Nama bot
+  botName: 'AikoBot',
+  
+  // Footer untuk pesan
+  footer: 'made with 💗 by Owner',
+  
+  // Session name
+  sessionName: 'session',
+  
+  // Status pesan otomatis
+  autoRead: true,
+  
+  // Waktu timeout (dalam detik)
+  pairingTimeout: 120
 };
