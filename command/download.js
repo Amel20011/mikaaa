@@ -1,22 +1,29 @@
-import config from "../config.js";
-
-export async function run(sock, jid, msg, cmd, text) {
-  switch (cmd) {
-    case `${config.prefix}ytmp4`:
-      await sock.sendMessage(jid, {
-        text:
-          "Masukkan link YouTube: .ytmp4 https://youtu.be/xxxxx\n(Ini demo tanpa downloader agar simpel)"
+// Command untuk download
+export async function handleDownloadCommand(sock, msg, command, args) {
+  const from = msg.key.remoteJid;
+  
+  switch (command) {
+    case 'ig':
+      await sock.sendMessage(from, { 
+        text: '📸 *Instagram Download*\n\nSilahkan kirim link Instagram:\n• Post\n• Reels\n• Story\n• IGTV' 
       });
       break;
-    case `${config.prefix}ytmp3`:
-      await sock.sendMessage(jid, {
-        text:
-          "Masukkan link YouTube: .ytmp3 https://youtu.be/xxxxx\n(Ini demo tanpa downloader agar simpel)"
+      
+    case 'tiktok':
+      await sock.sendMessage(from, { 
+        text: '🎵 *TikTok Download*\n\nSilahkan kirim link TikTok:\n• Video\n• Musik\n• Tanpa watermark' 
       });
       break;
-    case `${config.prefix}imgdl`:
-      await sock.sendMessage(jid, {
-        text: "Masukkan URL gambar: .imgdl https://example.com/image.jpg (demo)"
+      
+    case 'twitter':
+      await sock.sendMessage(from, { 
+        text: '🐦 *Twitter Download*\n\nSilahkan kirim link Twitter:\n• Tweet dengan video\n• Tweet dengan gambar' 
+      });
+      break;
+      
+    case 'spotify':
+      await sock.sendMessage(from, { 
+        text: '🎶 *Spotify Download*\n\nSilahkan kirim link Spotify:\n• Track\n• Playlist\n• Album' 
       });
       break;
   }
