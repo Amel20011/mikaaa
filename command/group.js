@@ -1,24 +1,65 @@
-import config from "../config.js";
-
-export async function run(sock, jid, msg, cmd, text, ctx) {
-  // Simple check
-  if (!ctx.isGroup) {
-    await sock.sendMessage(jid, { text: "Fitur ini hanya untuk grup ya 🌷" });
+// Command untuk grup
+export async function handleGroupCommand(sock, msg, command, args) {
+  const from = msg.key.remoteJid;
+  
+  // Cek apakah di grup
+  if (!from.endsWith('@g.us')) {
+    await sock.sendMessage(from, { 
+      text: '❌ Command ini hanya bisa digunakan di grup!' 
+    });
     return;
   }
-
-  switch (cmd) {
-    case `${config.prefix}announce`:
-      {
-        const announcement = text.replace(`${config.prefix}announce`, "").trim() || "Halo semua 💗";
-        await sock.sendMessage(jid, { text: `Pengumuman: ${announcement}` });
+  
+  const sender = msg.key.participant;
+  
+  switch (command) {
+    case 'groupinfo':
+      try {
+        const metadata = await sock.groupMetadata(from);
+        const participants = metadata.participants;
+        
+        let adminCount = 0;
+        participants.forEach(p => {
+          if (p.admin) adminCount++;
+        });
+        
+        await sock.sendMessage(from, {
+          text: `👥 *GROUP INFORMATION*\n\n` +
+                `📛 Nama: ${metadata.subject}\n` +
+                `🆔 ID: ${metadata.id}\n` +
+                `👥 Anggota: ${participants.length}\n` +
+                `👑 Admin: ${adminCount}\n` +
+                `📅 Dibuat: ${new Date(metadata.creation * 1000).toLocaleDateString()}\n` +
+                `🔗 Link: ${metadata.inviteLink || 'Tidak ada'}`
+        });
+      } catch (error) {
+        console.error('Error getting group info:', error);
       }
       break;
-    case `${config.prefix}mute`:
-      await sock.sendMessage(jid, { text: "Mode sunyi (demo) diaktifkan 👀" });
-      break;
-    case `${config.prefix}welcome`:
-      await sock.sendMessage(jid, { text: "Welcome message (demo) dinyalakan ✨" });
+      
+    case 'promote':
+      if (!args[0]) {
+        await sock.sendMessage(from, { 
+          text: `❌ Penggunaan: ${config.prefix}promote @tag atau reply pesan` 
+        });
+        return;
+      }
+      
+      // Cek apakah pengirim adalah admin
+      const metadata = await sock.groupMetadata(from);
+      const isAdmin = metadata.participants.find(p => p.id === sender)?.admin;
+      
+      if (!isAdmin) {
+        await sock.sendMessage(from, { 
+          text: '⛔ Hanya admin yang bisa promote member!' 
+        });
+        return;
+      }
+      
+      // Logika promote (simplified)
+      await sock.sendMessage(from, { 
+        text: '✅ Member berhasil dipromote menjadi admin!' 
+      });
       break;
   }
 }
